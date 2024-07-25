@@ -668,6 +668,10 @@ mod tests {
         assert_eq!(extract_match("[+a-z].zip", "abc.zip"), Some("abc.zip".to_string()));
         assert_eq!(extract_match("a[+a-z].zip", "abc.zip"), Some("abc.zip".to_string()));
         assert_eq!(extract_match("abc", "a"), None);
+        assert_eq!(extract_match("[+ぁ-ん].txt", "こころ.txt"), Some("こころ.txt".to_string()));
+        assert_eq!(extract_match("小説-[+ぁ-ん].txt", "小説-こころ.txt"), Some("小説-こころ.txt".to_string()));
+        assert_eq!(extract_match("[+あ\\-].txt", "ああ-ああ.txt"), Some("ああ-ああ.txt".to_string()));
+        assert_eq!(extract_match("A[+いろは\\-]Z", "Aいろ-いろは-Zabcdabcd"), Some("Aいろ-いろは-Z".to_string()));
     }
     #[test]
     fn test_find_match() {
