@@ -1,4 +1,6 @@
-/** VB Like wildcard */
+///
+/// # VBLike Pattern Matching
+///
 
 /// String Cursor
 #[derive(Clone, Debug)]
@@ -34,31 +36,35 @@ impl StrCursor {
         self.index += 1;
         c
     }
-    /// skip next character
-    pub fn next_n(&mut self, n: usize) {
-        self.index += n;
-    }
     /// get next character and skip escape character '\'
     pub fn next_char_esc(&mut self) -> char {
         let c = self.next();
         if c == '\\' {
-            self.next()
+            let c2 = self.next();
+            match c2 {
+                't' => '\t',
+                'n' => '\n',
+                'r' => '\r',
+                '0' => '\0',
+                'x' | 'u' => {
+                    let mut hex = String::new();
+                    while self.has_next() {
+                        let c3 = self.peek();
+                        if c3.is_ascii_hexdigit() {
+                            hex.push(c3);
+                            self.next();
+                            continue;
+                        }
+                        break;
+                    }
+                    let n = u32::from_str_radix(&hex, 16).unwrap_or(0);
+                    std::char::from_u32(n).unwrap_or('\0')
+                }
+                _ => c2,
+            }
         } else {
             c
         }
-    }
-    /// compare the next characters with the string
-    pub fn eq_str(&self, s: &str) -> bool {
-        let ss = s.chars().collect::<Vec<char>>();
-        for i in 0..ss.len() {
-            if self.index + i >= self.chars.len() {
-                return false;
-            }
-            if self.chars[self.index + i] != ss[i] {
-                return false;
-            }
-        }
-        true
     }
 }
 
@@ -85,7 +91,7 @@ pub enum PatternChar {
     Char(char),
     Number, // '#'
     Question, // '?'
-    Wildcard(char), // '*'
+    Wildcard, // '*'
     CharList(Vec<CharRange>), // [charlist]
     NotCharList(Vec<CharRange>), // [!charlist]
     CharListRepeat(Vec<CharRange>), // [*charlist]
@@ -94,90 +100,6 @@ pub enum PatternChar {
 }
 
 impl PatternChar {
-    /// check if the pattern character matches the text
-    pub fn is_match(&mut self, cur: &mut StrCursor) -> bool {
-        match self {
-            PatternChar::Char(ch) => {
-                if cur.has_next() && cur.peek() == *ch {
-                    cur.next();
-                    return true;
-                }
-            }
-            PatternChar::Number => {
-                if cur.has_next() && cur.peek().is_ascii_digit() {
-                    cur.next();
-                    return true;
-                }
-            }
-            PatternChar::Question => {
-                if cur.has_next() {
-                    cur.next();
-                    return true;
-                }
-            }
-            PatternChar::Wildcard(next_char) => {
-                if *next_char == '\0' {
-                    cur.index = cur.chars.len();
-                    return true;
-                }
-                while cur.has_next() {
-                    if cur.peek() == *next_char {
-                        return true;
-                    }
-                    cur.next();
-                }
-                return true;
-            }
-            PatternChar::CharList(charlist) => {
-                if cur.has_next() {
-                    let ch = cur.peek();
-                    if charlist.iter().any(|r| r.contains(ch)) {
-                        cur.next();
-                        return true;
-                    }
-                }
-            }
-            PatternChar::NotCharList(charlist) => {
-                if cur.has_next() {
-                    let ch = cur.peek();
-                    if !charlist.iter().any(|r| r.contains(ch)) {
-                        cur.next();
-                        return true;
-                    }
-                }
-            }
-            PatternChar::CharListRepeat(charlist) => {
-                while cur.has_next() {
-                    let ch = cur.peek();
-                    if !charlist.iter().any(|r| r.contains(ch)) {
-                        break;
-                    }
-                    cur.next();
-                }
-                return true;
-            }
-            PatternChar::NotCharListRepeat(charlist) => {
-                while cur.has_next() {
-                    let ch = cur.peek();
-                    if charlist.iter().any(|r| r.contains(ch)) {
-                        break;
-                    }
-                    cur.next();
-                }
-                return true;
-            }
-            PatternChar::Selector(selector) => {
-                for pat in selector.iter() {
-                    if cur.eq_str(pat) {
-                        cur.next_n(pat.len());
-                        return true;
-                    }
-                }
-            }
-        }
-        false
-    }
-
     /// read character list
     fn read_charlist(pattern_cur: &mut StrCursor) -> Vec<CharRange> {
         let mut charlist = vec![];
@@ -208,7 +130,6 @@ impl PatternChar {
 /// Pattern structure
 #[derive(Clone, Debug)]
 pub struct Pattern {
-    pub index: usize,
     pub pattern: Vec<PatternChar>,
 }
 impl Pattern {
@@ -220,10 +141,7 @@ impl Pattern {
             match c {
                 '#' => pattern.push(PatternChar::Number),
                 '?' => pattern.push(PatternChar::Question),
-                '*' => {
-                    let next_char = pattern_cur.peek();
-                    pattern.push(PatternChar::Wildcard(next_char));
-                },
+                '*' => pattern.push(PatternChar::Wildcard),
                 '\\' => { // escape
                     let c = pattern_cur.next();
                     pattern.push(PatternChar::Char(c));
@@ -236,7 +154,7 @@ impl Pattern {
                             let charlist = PatternChar::read_charlist(&mut pattern_cur);
                             pattern.push(PatternChar::NotCharList(charlist));
                         },
-                        '*' => {
+                        '+' => {
                             pattern_cur.next(); // skip '*'
                             let charlist = PatternChar::read_charlist(&mut pattern_cur);
                             pattern.push(PatternChar::CharListRepeat(charlist));
@@ -273,32 +191,134 @@ impl Pattern {
             }
         }
         Pattern {
-            index: 0,
             pattern,
         }
     }
     /// check if the pattern matches the text
-    pub fn has_next(&self) -> bool {
-        self.index < self.pattern.len()
-    }
-    /// get next pattern character
-    pub fn next(&self) -> PatternChar {
-        self.pattern[self.index].clone()
+    #[allow(dead_code)]
+    pub fn is_match(&self, text: &str) -> bool {
+        let text_vec = text.chars().collect::<Vec<char>>();
+        is_match_slice(&self.pattern[..], &text_vec[..])
     }
 }
 
 /// check if the pattern matches the text
 pub fn is_match(pattern: &str, text: &str) -> bool {
-    let mut pattern = Pattern::new(pattern);
-    let mut text_cur = StrCursor::new(text);
-    while pattern.has_next() {
-        let mut pat = pattern.next();
-        if !pat.is_match(&mut text_cur) {
-            return false;
+    let pattern_vec = Pattern::new(pattern);
+    let text_vec = text.chars().collect::<Vec<char>>();
+    is_match_slice(&pattern_vec.pattern[..], &text_vec[..])
+}
+
+/// check if the pattern matches the text
+pub fn is_match_slice(pattern: &[PatternChar], text: &[char]) -> bool {
+    let mut i = 0;
+    let mut j = 0;
+    while i < pattern.len() && j < text.len() {
+        let pattern_char = &pattern[i];
+        match pattern_char {
+            PatternChar::Char(ch) => {
+                if text[j] == *ch {
+                    i += 1;
+                    j += 1;
+                    continue;
+                }
+                return false;
+            }
+            PatternChar::Number => {
+                if text[j].is_ascii_digit() {
+                    i += 1;
+                    j += 1;
+                    continue;
+                }
+                return false;
+            }
+            PatternChar::Question => {
+                i += 1;
+                j += 1;
+                continue;
+            }
+            PatternChar::Wildcard => {
+                i += 1; // skip '*'
+                if pattern.len() == i { // match until the end of the string
+                    return true;
+                }
+                let sub_pattern = &pattern[i..];
+                for j2 in j..text.len() {
+                    if is_match_slice(sub_pattern, &text[j2..]) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+            PatternChar::CharList(charlist) => {
+                let ch = text[j];
+                if charlist_contains(charlist, ch) {
+                    i += 1;
+                    j += 1;
+                    continue;
+                }
+                return false;
+            }
+            PatternChar::NotCharList(charlist) => {
+                let ch = text[j];
+                if !charlist_contains(charlist, ch) {
+                    i += 1;
+                    j += 1;
+                    continue;
+                }
+                return false;
+            }
+            PatternChar::CharListRepeat(charlist) => {
+                if !charlist_contains(charlist, text[j]) { return false; }
+                i += 1;
+                j += 1;
+                while j < text.len() {
+                    if !charlist_contains(charlist, text[j]) {
+                        break;
+                    }
+                    j += 1;
+                }
+                continue;
+            }
+            PatternChar::NotCharListRepeat(charlist) => {
+                if charlist_contains(charlist, text[j]) { return false; }
+                i += 1;
+                j += 1;
+                while j < text.len() {
+                    if charlist_contains(charlist, text[j]) {
+                        break;
+                    }
+                    j += 1;
+                }
+                continue;
+            }
+            PatternChar::Selector(selector) => {
+                let mut matched = false;
+                for substr in selector {
+                    let substr_chars = substr.chars().collect::<Vec<char>>();
+                    let subtext = &text[j..];
+                    if subtext.starts_with(substr_chars.as_slice()){
+                        i += 1;
+                        j += substr.len();
+                        matched = true;
+                        break;
+                    }
+                }
+                if matched { continue; }
+                return false;
+            }
         }
-        pattern.index += 1;
     }
-    !text_cur.has_next() && !pattern.has_next()
+    (i >= pattern.len()) && (j >= text.len())
+}
+
+fn charlist_contains(charlist: &[CharRange], ch: char) -> bool {
+    for range in charlist {
+        if range.contains(ch) {
+            return true;
+        }
+    }
+    false
 }
 
 #[cfg(test)]
@@ -337,5 +357,53 @@ mod tests {
         assert_eq!(is_match("a?*.txt", "a1t.txt"), true);
         assert_eq!(is_match("a?*.txt", "a1t.txtt"), false);
         assert_eq!(is_match("a?*.txt", "a1t.txt"), true);
+        // recursive wildcard '*'
+        assert_eq!(is_match("abc.*.txt", "abc.txt.zip"), false);
+        assert_eq!(is_match("a*.zip", "abc.zip.zip"), true);
+        assert_eq!(is_match("a*.zip", "abc.zip.zip.txt"), false);
+        assert_eq!(is_match("a*.zip", "aaaaa.zip.zip.txt"), false);
+        assert_eq!(is_match("a*.zip", "aaaaa.zip.zip.txt.zip"), true);
     }
+
+    #[test]
+    fn test_is_match_vblike_charlist() {
+        // wildcard [str]
+        assert_eq!(is_match("abc[0-3].zip", "abc3.zip"), true);
+        assert_eq!(is_match("abc[0-3].zip", "abc4.zip"), false);
+        assert_eq!(is_match("abc[0-3].zip", "abc4.zip"), false);
+        assert_eq!(is_match("abc[123].zip", "abc3.zip"), true);
+        assert_eq!(is_match("abc[123].zip", "abc4.zip"), false);
+        // wildcard [!str]
+        assert_eq!(is_match("abc[!0-3].zip", "abc3.zip"), false);
+        assert_eq!(is_match("abc[!0-3].zip", "abc4.zip"), true);
+        assert_eq!(is_match("abc[!123].zip", "abc4.zip"), true);
+        assert_eq!(is_match("abc[!123].zip", "abc2.zip"), false);
+        // wildcard [+str]
+        assert_eq!(is_match("abc[+0-9].zip", "abc123.zip"), true);
+        assert_eq!(is_match("abc[+0-9\\-].zip", "abc123-456.zip"), true);
+        // wildcard [-str]
+        assert_eq!(is_match("abc[-\\.].zip", "abcABC.zip"), true);
+        assert_eq!(is_match("a[-\\-]-[+0-9].zip", "abc123-456.zip"), true);
+    }
+    #[test]
+    fn test_is_match_vblike_selector() {
+        // wildcard [str]
+        assert_eq!(is_match("[=cat|dog|penguin].zip", "cat.zip"), true);
+        assert_eq!(is_match("[=cat|dog|penguin].zip", "pen.zip"), false);
+    }
+    #[test]
+    fn test_is_match_vblike_esc() {
+        // escape pattern
+        assert_eq!(is_match("a[\\t]b", "a\tb"), true);
+        assert_eq!(is_match("a[\\x09]b", "a\tb"), true);
+        assert_eq!(is_match("a[+\\x09]b", "a\t\tb"), true);
+    }
+    #[test]
+    fn test_is_match_strcut() {
+        let pattern = Pattern::new("*.txt");
+        assert_eq!(pattern.is_match("abc.txt"), true);
+        assert_eq!(pattern.is_match("abc.zip"), false);
+        assert_eq!(pattern.is_match("豚に真珠.txt"), true);
+    }
+
 }
