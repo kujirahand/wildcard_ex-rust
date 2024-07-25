@@ -2,6 +2,7 @@
 
 This is a library for extended wildcards that allows VB-like specifications.
 It enables the expression of repeating arbitrary strings with simple specifications using wildcards.
+It supports **multibyte strings** such as Chinese, Japanese, and Korean.
 
 ## Install the crate
 
@@ -11,7 +12,7 @@ To install the crate, run the following command.
 cargo add wildcard_ex
 ```
 
-## Example - Basic usage
+## Basic usage
 
 You just need to call the `is_match(pattern, str)` function as shown below.
 
@@ -52,9 +53,6 @@ fn main() {
 }
 ```
 
-- `is_match_simple` specifies general wildcards.
-- `is_match` specifies extended wildcards.
-
 ## Wildcard patterns
 
 The supported patterns are as follows in the table below.
@@ -73,22 +71,42 @@ The supported patterns are as follows in the table below.
 
 - In \[`str`\], you can specify character codes using \xHH or \uHHHH.
 
-### Extract matched part from beginning
+### Functions
+
+- `is_match_simple` ... specifies general wildcards, checks if the specified text completely matches the pattern and returns true if it. The pattern can include wildcards such as [‘*’, ‘?’, ‘#’].
+- `is_match` ... specifies extended wildcards, checks if the specified text completely matches the pattern and returns true if it. The pattern can include wildcards such as [‘*’, ‘?’, ‘#’, “[…]”].
+- `extract_match` ... tests whether the text at the beginning matches the pattern and returns the matched part.
+- `find_match` ... searches through the entire text from the beginning to find and extract the part that matches the pattern.
+
+## Extract matched part from beginning
+
+The function `extract_match` searches through the entire text from the beginning to find and extract the part that matches the pattern.
 
 ```rust
 use wildcard_ex::*;
 fn main() {
+    // extract_match
     assert_eq!(extract_match("*.txt", "abc.txt"), Some("abc.txt".to_string()));
     assert_eq!(extract_match("hello*", "hello, world!"), Some("hello, world!".to_string()));
+    // find_match
+    let result = find_match("*.txt", "abc.txt").unwrap();
+    assert_eq!(result.start, 0);
+    assert_eq!(result.matched, "abc.txt".to_string());
 }
 ```
 
+## link
 
-### (ja) 拡張ワイルドカード
+- [GitHub Repository](https://github.com/kujirahand/wildcard_ex-rust)
+- [Crates.io > wildcard_ex](https://crates.io/crates/wildcard_ex)
+- [Document](https://docs.rs/wildcard_ex/)
+
+
+## (ja) 拡張ワイルドカード
 
 このクレートは、VBライクな指定が可能な拡張ワイルドカードのライブラリです。
 簡単な指定でワイルドカードの任意文字列の繰り返し表現が可能です。
-日本語などのマルチバイト文字列も問題なく処理できます。
+日本語などの**マルチバイト文字列**も問題なく処理できます。
 
 指定可能なのは次のようなワイルドカードのパターンです。
 
@@ -106,10 +124,15 @@ fn main() {
 
 - \[`str`\]では、`\xHH`あるいは`\uHHHH`を指定して文字コードを指定できます。
 
-### 簡単な使い方
 
-- `is_match_simple`は一般的なワイルドカードを指定するものです。
-- `is_match`は拡張ワイルドカードを指定するものです。
+### 主な関数
+
+- `is_match_simple(パターン, 文字列)`…一般的なワイルドカードを指定するものです。パターンが文字列に完全にマッチする場合、trueを返します。
+- `is_match(パターン, 文字列)`…拡張ワイルドカードを指定するものです。パターンが文字列に完全にマッチする場合、trueを返します。
+- `extract_match(パターン, 文字列)`…テキストの先頭からマッチした部分文字列を返します。
+- `find_match(パターン, 文字列)`…テキスト全体からマッチする部分を検索して、マッチした位置と部分文字列の構造体を返します。
+
+### 簡単な使い方
 
 ```rust
 use wildcard_ex::{is_match_simple, is_match};
@@ -131,8 +154,5 @@ fn main() {
 }
 ```
 
-### link
+詳しくは、[ドキュメント](https://docs.rs/wildcard_ex/)をご覧ください。
 
-- [GitHub Repository](https://github.com/kujirahand/wildcard_ex-rust)
-- [Crates.io > wildcard_ex](https://crates.io/crates/wildcard_ex)
-- [Document](https://docs.rs/wildcard_ex/)

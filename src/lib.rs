@@ -61,8 +61,13 @@
 //! ```rust
 //! use wildcard_ex::*;
 //! fn main() {
+//!     // extract_match
 //!     assert_eq!(extract_match("*.txt", "abc.txt"), Some("abc.txt".to_string()));
 //!     assert_eq!(extract_match("hello*", "hello, world!"), Some("hello, world!".to_string()));
+//!     // find_match
+//!     let result = find_match("*.txt", "abc.txt").unwrap();
+//!     assert_eq!(result.start, 0);
+//!     assert_eq!(result.matched, "abc.txt".to_string());
 //! }
 //! ```
 
