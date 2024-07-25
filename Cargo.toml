@@ -2,5 +2,13 @@
 name = "wildcard_ex"
 version = "0.1.0"
 edition = "2021"
+authors = ["kujirahand <web@kujirahand.com>"]
+description = "This is a library for extended wildcards that allows VB-like specifications."
+readme = "README.md"
+repository = "https://github.com/kujirahand/wildcard_ex-rust"
+license = "MIT"
+license-file = "LICENSE"
+keywords = ["wildcard", "pattern"]
+documentation = "https://docs.rs/wildcard_ex"
 
 [dependencies]
