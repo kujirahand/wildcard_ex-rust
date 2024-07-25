@@ -30,8 +30,7 @@ fn main() {
 
 ### Various pattern matching examples
 
-- `is_match_simple` specifies general wildcards.
-- `is_match` specifies extended wildcards.
+Pattern matching can be performed by specifying wildcard patterns as shown below.
 
 ```rust
 use wildcard_ex::{is_match_simple, is_match};
@@ -53,6 +52,9 @@ fn main() {
 }
 ```
 
+- `is_match_simple` specifies general wildcards.
+- `is_match` specifies extended wildcards.
+
 ## Wildcard patterns
 
 The supported patterns are as follows in the table below.
@@ -69,7 +71,18 @@ The supported patterns are as follows in the table below.
 | \[-str\]      | Any character except those in the specified string `str` repeated 1 or more times |
 | \[=aaa\|bbb\] | The string `aaa` or `bbb`                                                         |
 
-In \[`str`\], you can specify character codes using \xHH or \uHHHH.
+- In \[`str`\], you can specify character codes using \xHH or \uHHHH.
+
+### Extract matched part from beginning
+
+```rust
+use wildcard_ex::*;
+fn main() {
+    assert_eq!(extract_match("*.txt", "abc.txt"), Some("abc.txt".to_string()));
+    assert_eq!(extract_match("hello*", "hello, world!"), Some("hello, world!".to_string()));
+}
+```
+
 
 ### (ja) 拡張ワイルドカード
 
@@ -84,14 +97,14 @@ In \[`str`\], you can specify character codes using \xHH or \uHHHH.
 | *             | 任意の文字が0回以上繰り返される                                  |
 | ?             | 任意の1文字                                                   |
 | #             | 任意の1桁の数字 (=\[0-\9])                                     |
-| \             | エスケープ文字。'\t'はタブ、'\n'は改行、'\['は'['を意味する        |
+| \             | エスケープ文字。'\t'はタブ、'\n'は改行、'\\\['は'\['を意味する     |
 | \[str\]       | 指定された文字列`str`のいずれか1文字                            |
 | \[!str\]      | 指定された文字列`str`以外のいずれか1文字                         |
 | \[+str\]      | 指定された文字列`str`の任意の文字が1回以上繰り返される              |
 | \[-str\]      | 指定された文字列`str`以外の文字が1回以上繰り返される               |
 | \[=aaa\|bbb\] | 文字列`aaa`または`bbb`                                        |
 
-\[`str`\]では、`\xHH`あるいは`\uHHHH`を指定して文字コードを指定できます。
+- \[`str`\]では、`\xHH`あるいは`\uHHHH`を指定して文字コードを指定できます。
 
 ### 簡単な使い方
 
@@ -120,6 +133,6 @@ fn main() {
 
 ### link
 
-- [repository](https://github.com/kujirahand/wildcard_ex-rust)
-- [crates.io](https://crates.io/crates/wildcard_ex)
-- [document](https://docs.rs/wildcard_ex/)
+- [GitHub Repository](https://github.com/kujirahand/wildcard_ex-rust)
+- [Crates.io > wildcard_ex](https://crates.io/crates/wildcard_ex)
+- [Document](https://docs.rs/wildcard_ex/)

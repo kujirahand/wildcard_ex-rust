@@ -3,7 +3,7 @@
 //! This is a library for extended wildcards that allows VB-like specifications.
 //! It enables the expression of repeating arbitrary strings with simple specifications using wildcards.
 //! 
-//! ## Example - Basic Usage
+//! ### Example - Basic Usage
 //! 
 //! ```rust
 //! use wildcard_ex::{is_match, ex};
@@ -42,7 +42,10 @@
 //! Please refer to the following README to see which wildcard patterns can be used.
 //! - [README.md](https://github.com/kujirahand/wildcard_ex-rust)
 //! 
-//! ## Using ex:Pattern object
+//! ### Using ex:Pattern object
+//! 
+//! - `is_match_simple` specifies general wildcards.
+//! - `is_match` specifies extended wildcards.
 //! 
 //! ```rust
 //! use wildcard_ex::*;
@@ -52,18 +55,38 @@
 //!     assert_eq!(pattern.is_match("abc.zip"), false);
 //! }
 //! ```
+//! 
+//! ### extract matched part from beginning
+//! 
+//! ```rust
+//! use wildcard_ex::*;
+//! fn main() {
+//!     assert_eq!(extract_match("*.txt", "abc.txt"), Some("abc.txt".to_string()));
+//!     assert_eq!(extract_match("hello*", "hello, world!"), Some("hello, world!".to_string()));
+//! }
+//! ```
 
 pub mod simple;
 pub mod ex;
 
-/// check if the pattern matches the text with wildcard characters ['*', '?', '#']
+/// checks if the specified text completely matches the pattern and returns true if it. The pattern can include wildcards such as ['*', '?', '#'].
 pub fn is_match_simple(pattern: &str, text: &str) -> bool {
     simple::is_match(pattern, text)
 }
 
-/// check if the pattern matches the text with wildcard characters ['*', '?', '#', "[...]"]
+/// checks if the specified text completely matches the pattern and returns true if it. The pattern can include wildcards such as ['*', '?', '#', "[...]"].
 pub fn is_match(pattern: &str, text: &str) -> bool {
     ex::is_match(pattern, text)
+}
+
+/// tests whether the text at the beginning matches the pattern and returns the matched part.
+pub fn extract_match(pattern: &str, text: &str) -> Option<String> {
+    ex::extract_match(pattern, text)
+}
+
+/// searches through the entire text from the beginning to find and extract the part that matches the pattern.
+pub fn find_match(pattern: &str, text: &str) -> Option<ex::MatchedResult> {
+    ex::find_match(pattern, text)
 }
 
 #[cfg(test)]

@@ -132,6 +132,7 @@ impl PatternChar {
 pub struct Pattern {
     pub pattern: Vec<PatternChar>,
 }
+#[allow(dead_code)]
 impl Pattern {
     pub fn new(pattern_str: &str) -> Self {
         let mut pattern_cur = StrCursor::new(pattern_str);
@@ -195,12 +196,11 @@ impl Pattern {
         }
     }
     /// check if the pattern matches the text
-    #[allow(dead_code)]
     pub fn is_match(&self, text: &str) -> bool {
         let text_vec = text.chars().collect::<Vec<char>>();
         is_match_slice(&self.pattern[..], &text_vec[..])
     }
-    #[allow(dead_code)]
+    /// check if the pattern matches the text list
     pub fn is_match_all(&self, str_list: &[String]) -> Vec<bool> {
         let mut result = vec![];
         for text in str_list {
@@ -209,7 +209,7 @@ impl Pattern {
         }
         result
     }
-    #[allow(dead_code)]
+    /// filter the text list by the pattern
     pub fn filter(&self, str_list: &[String]) -> Vec<String> {
         let mut result = vec![];
         for text in str_list {
@@ -220,6 +220,16 @@ impl Pattern {
             }
         }
         result
+    }
+    /// extract matched text from the beginning of string
+    pub fn extract_match(&self, text: &str) -> Option<String> {
+        let text_vec = text.chars().collect::<Vec<char>>();
+        extract_match_slice(&self.pattern[..], &text_vec[..])
+    }
+    /// find a matching substring from the entire string.
+    pub fn find_match(&self, text: &str) -> Option<MatchedResult> {
+        let text_vec = text.chars().collect::<Vec<char>>();
+        find_match_slice(&self.pattern[..], &text_vec[..])
     }
 }
 
@@ -341,6 +351,188 @@ fn charlist_contains(charlist: &[CharRange], ch: char) -> bool {
     }
     false
 }
+
+/// extracts matched text from the beginning of string
+#[allow(dead_code)]
+pub fn extract_match(pattern: &str, text: &str) -> Option<String> {
+    let pat = Pattern::new(pattern);
+    let text_chars = text.chars().collect::<Vec<char>>();
+    extract_match_slice(&pat.pattern[..], &text_chars)
+}
+
+/// extracts matched text from the beginning of string
+#[allow(dead_code)]
+pub fn extract_match_slice(pattern: &[PatternChar], text: &[char]) -> Option<String> {
+    let mut i = 0;
+    let mut j = 0;
+    let mut matched = String::new();
+    while i < pattern.len() && j < text.len() {
+        let pattern_char = &pattern[i];
+        // println!("@@@@{:?}==={}:{}", pattern_char, j, text[j]);
+        match pattern_char {
+            PatternChar::Char(ch) => {
+                if text[j] == *ch {
+                    matched.push(*ch);
+                    i += 1;
+                    j += 1;
+                    continue;
+                }
+                return None;
+            },
+            PatternChar::Number => {
+                if text[j].is_ascii_digit() {
+                    matched.push(text[j]);
+                    i += 1;
+                    j += 1;
+                    continue;
+                }
+                return None;
+            },
+            PatternChar::Question => {
+                matched.push(text[j]);
+                i += 1;
+                j += 1;
+                continue;
+            },
+            PatternChar::CharList(charlist) => {
+                let ch = text[j];
+                if charlist_contains(&charlist, ch) {
+                    matched.push(ch);
+                    i += 1;
+                    j += 1;
+                    continue;
+                }
+                return None;
+            },
+            PatternChar::NotCharList(charlist) => {
+                let ch = text[j];
+                if !charlist_contains(&charlist, ch) {
+                    matched.push(ch);
+                    i += 1;
+                    j += 1;
+                    continue;
+                }
+                return None;
+            },
+            PatternChar::CharListRepeat(charlist) => {
+                if !charlist_contains(&charlist, text[j]) { return None; }
+                matched.push(text[j]);
+                i += 1;
+                j += 1;
+                while j < text.len() {
+                    if !charlist_contains(&charlist, text[j]) {
+                        break;
+                    }
+                    matched.push(text[j]);
+                    j += 1;
+                }
+                continue;
+            },
+            PatternChar::NotCharListRepeat(charlist) => {
+                if charlist_contains(&charlist, text[j]) { return None; }
+                matched.push(text[j]);
+                i += 1;
+                j += 1;
+                while j < text.len() {
+                    if charlist_contains(&charlist, text[j]) {
+                        break;
+                    }
+                    matched.push(text[j]);
+                    j += 1;
+                }
+                continue;
+            },
+            PatternChar::Selector(selector) => {
+                let mut flag_matched = false;
+                i += 1;
+                for substr in selector {
+                    let substr_chars = substr.chars().collect::<Vec<char>>();
+                    let subtext = &text[j..];
+                    if subtext.starts_with(substr_chars.as_slice()){
+                        let substr = substr_chars.iter().collect::<String>();
+                        matched.push_str(&substr);
+                        j += substr_chars.len();
+                        flag_matched = true;
+                        break;
+                    }
+                }
+                if flag_matched { continue; }
+                return None;
+            },
+            PatternChar::Wildcard => {
+                i += 1; // skip '*'
+                if pattern.len() == i { // match until the end of the string
+                    let substring: String = text[j..].iter().collect();
+                    matched.push_str(&substring);
+                    return Some(matched);
+                }
+                // check patterns recursively
+                let sub_pattern = &pattern[i..];
+                for j2 in j..text.len() {
+                    if let Some(sub_matched) = extract_match_slice(sub_pattern, &text[j2..]) {
+                        matched.push_str(&sub_matched);
+                        return Some(matched);
+                    } else {
+                        matched.push(text[j2]);
+                    }
+                }
+                return None;
+            },
+        }
+    }
+    if pattern.len() == i {
+        return Some(matched)
+    }
+    None
+}
+
+
+/// find_match's result
+#[allow(dead_code)]
+#[derive(Debug, Clone, PartialEq)]
+pub struct MatchedResult {
+    pub start: usize,
+    pub end: usize,
+    pub matched: String,
+}
+#[allow(dead_code)]
+impl MatchedResult {
+    pub fn new(start: usize, end: usize, matched: String) -> Self {
+        MatchedResult {
+            start,
+            end,
+            matched,
+        }
+    }
+    pub fn len(&self) -> usize {
+        self.end - self.start
+    }
+}
+
+/// find a matching substring from the entire string.
+#[allow(dead_code)]
+pub fn find_match(pattern: &str, text: &str) -> Option<MatchedResult> {
+    let pattern_chars = Pattern::new(pattern).pattern;
+    let text_chars = text.chars().collect::<Vec<char>>();
+    find_match_slice(&pattern_chars, &text_chars)
+}
+
+/// find a matching substring from the entire string.
+pub fn find_match_slice(pattern: &[PatternChar], text: &[char]) -> Option<MatchedResult> {
+    for j in 0..text.len() {
+        let sub_text = &text[j..];
+        if let Some(sub_matched) = extract_match_slice(pattern, sub_text) {
+            let result = MatchedResult {
+                start: j,
+                end: j + sub_matched.len(),
+                matched: sub_matched,
+            };
+            return Some(result);
+        }
+    }
+    None
+}
+
 
 #[cfg(test)]
 mod tests {
@@ -464,5 +656,34 @@ mod tests {
             "豚に真珠.txt".to_string(),
         ]);
     }
-
+    #[test]
+    fn test_extract_match() {
+        assert_eq!(extract_match("a", "a"), Some("a".to_string()));
+        assert_eq!(extract_match("a", "b"), None);
+        assert_eq!(extract_match("a*", "abc"), Some("abc".to_string()));
+        assert_eq!(extract_match("a*", "abc.zip"), Some("abc.zip".to_string()));
+        assert_eq!(extract_match("*.zip", "abc.zip"), Some("abc.zip".to_string()));
+        assert_eq!(extract_match("a*.zip", "abc.zip"), Some("abc.zip".to_string()));
+        assert_eq!(extract_match("a*.zip", "abc.txt"), None);
+        assert_eq!(extract_match("[+a-z].zip", "abc.zip"), Some("abc.zip".to_string()));
+        assert_eq!(extract_match("a[+a-z].zip", "abc.zip"), Some("abc.zip".to_string()));
+        assert_eq!(extract_match("abc", "a"), None);
+    }
+    #[test]
+    fn test_find_match() {
+        // simple start
+        let result = find_match("a", "a").unwrap_or(MatchedResult::new(0, 0, "".to_string()));
+        assert_eq!(result.start, 0);
+        // simple start and matched
+        let result = find_match("a", "01234a").unwrap_or(MatchedResult::new(0, 0, "".to_string()));
+        assert_eq!(result.start, 5);
+        assert_eq!(result.matched, "a".to_string());
+        // wildcard match
+        let result = find_match("c*t", "01234cat_____").unwrap_or(MatchedResult::new(0, 0, "".to_string()));
+        assert_eq!(result.start, 5);
+        assert_eq!(result.matched, "cat".to_string());
+        // failed match
+        let result = find_match("abc", "a");
+        assert_eq!(result, None);
+    }
 }
