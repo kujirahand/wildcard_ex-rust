@@ -3,6 +3,23 @@
 //! This is a library for extended wildcards that allows VB-like specifications.
 //! It enables the expression of repeating arbitrary strings with simple specifications using wildcards.
 //! 
+//! ## Example - Basic Usage
+//! 
+//! ```rust
+//! use wildcard_ex::{is_match, ex};
+//! fn main() {
+//!     // match with wildcard characters ['*', '?', '#', "[...]"]
+//!     assert_eq!(is_match("*.txt", "abc.txt"), true);
+//!     assert_eq!(is_match("test*.txt", "test1234.txt"), true);
+//!     // using Pattern object
+//!     let pattern = ex::Pattern::new("*.txt");
+//!     assert_eq!(pattern.is_match("abc.txt"), true);
+//!     assert_eq!(pattern.is_match("abc.zip"), false);
+//! }
+//! ```
+//! 
+//! ### Various pattern matching examples
+//! 
 //! ```rust
 //! use wildcard_ex::*;
 //! fn main() {
@@ -25,7 +42,7 @@
 //! Please refer to the following README to see which wildcard patterns can be used.
 //! - [README.md](https://github.com/kujirahand/wildcard_ex-rust)
 //! 
-//! ## Using ex:Pattern objects
+//! ## Using ex:Pattern object
 //! 
 //! ```rust
 //! use wildcard_ex::*;
@@ -49,3 +66,15 @@ pub fn is_match(pattern: &str, text: &str) -> bool {
     ex::is_match(pattern, text)
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_is_match_simple() {
+        // simple pattern
+        assert_eq!(is_match("a", "b"), false);
+        assert_eq!(is_match("a*.txt", "abc.txt"), true);
+        assert_eq!(is_match_simple("a", "aa"), false);
+        assert_eq!(is_match_simple("a*.txt", "abc.txt"), true);
+    }
+}

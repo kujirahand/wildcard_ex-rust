@@ -200,6 +200,27 @@ impl Pattern {
         let text_vec = text.chars().collect::<Vec<char>>();
         is_match_slice(&self.pattern[..], &text_vec[..])
     }
+    #[allow(dead_code)]
+    pub fn is_match_all(&self, str_list: &[String]) -> Vec<bool> {
+        let mut result = vec![];
+        for text in str_list {
+            let text_vec = text.chars().collect::<Vec<char>>();
+            result.push(is_match_slice(&self.pattern[..], &text_vec[..]));
+        }
+        result
+    }
+    #[allow(dead_code)]
+    pub fn filter(&self, str_list: &[String]) -> Vec<String> {
+        let mut result = vec![];
+        for text in str_list {
+            let text_vec = text.chars().collect::<Vec<char>>();
+            let b = is_match_slice(&self.pattern[..], &text_vec[..]);
+            if b {
+                result.push(text.clone());
+            }
+        }
+        result
+    }
 }
 
 /// check if the pattern matches the text
@@ -294,12 +315,12 @@ pub fn is_match_slice(pattern: &[PatternChar], text: &[char]) -> bool {
             }
             PatternChar::Selector(selector) => {
                 let mut matched = false;
+                i += 1;
                 for substr in selector {
                     let substr_chars = substr.chars().collect::<Vec<char>>();
                     let subtext = &text[j..];
                     if subtext.starts_with(substr_chars.as_slice()){
-                        i += 1;
-                        j += substr.len();
+                        j += substr_chars.len();
                         matched = true;
                         break;
                     }
@@ -399,11 +420,44 @@ mod tests {
         assert_eq!(is_match("a[+\\x09]b", "a\t\tb"), true);
     }
     #[test]
+    fn test_is_match_multibytes() {
+        assert_eq!(is_match("[+あ-ん].zip", "いろは.zip"), true);
+        assert_eq!(is_match("[+あ-ん].zip", "魚エラー.zip"), false);
+        assert_eq!(is_match("魚[+ア-ン].zip", "魚図鑑.zip"), false);
+        // selector
+        assert_eq!(is_match("[=図鑑|資料|市場].zip", "市場.zip"), true);
+        assert_eq!(is_match("魚[=図鑑|資料|市場]売店.zip", "魚市場売店.zip"), true);
+    }
+
+    #[test]
     fn test_is_match_strcut() {
         let pattern = Pattern::new("*.txt");
         assert_eq!(pattern.is_match("abc.txt"), true);
         assert_eq!(pattern.is_match("abc.zip"), false);
         assert_eq!(pattern.is_match("豚に真珠.txt"), true);
+    }
+    #[test]
+    fn test_is_match_strcut2() {
+        let pattern = Pattern::new("*.txt");
+        let str_list = vec![
+            "abc.txt".to_string(),
+            "abc.zip".to_string(),
+            "豚に真珠.txt".to_string(),
+        ];
+        assert_eq!(pattern.is_match_all(str_list.as_slice()), [true, false, true]);
+    }
+    #[test]
+    fn test_is_match_strcut3() {
+        let pattern = Pattern::new("*.txt");
+        let str_list = vec![
+            "abc.txt".to_string(),
+            "abc.zip".to_string(),
+            "豚に真珠.txt".to_string(),
+        ];
+        assert_eq!(pattern.filter(str_list.as_slice()), [
+            "abc.txt".to_string(),
+            "豚に真珠.txt".to_string(),
+        ]);
     }
 
 }

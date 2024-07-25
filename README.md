@@ -3,6 +3,36 @@
 This is a library for extended wildcards that allows VB-like specifications.
 It enables the expression of repeating arbitrary strings with simple specifications using wildcards.
 
+## Install the crate
+
+To install the crate, run the following command.
+
+```sh
+cargo add wildcard_ex
+```
+
+## Example - Basic usage
+
+You just need to call the `is_match(pattern, str)` function as shown below.
+
+```rust
+use wildcard_ex::{is_match, ex};
+fn main() {
+    // match with wildcard characters ['*', '?', '#', "[...]"]
+    assert_eq!(is_match("*.txt", "abc.txt"), true);
+    assert_eq!(is_match("test*.txt", "test1234.txt"), true);
+    // using Pattern object
+    let pattern = ex::Pattern::new("*.txt");
+    assert_eq!(pattern.is_match("abc.txt"), true);
+    assert_eq!(pattern.is_match("abc.zip"), false);
+}
+```
+
+### Various pattern matching examples
+
+- `is_match_simple` specifies general wildcards.
+- `is_match` specifies extended wildcards.
+
 ```rust
 use wildcard_ex::{is_match_simple, is_match};
 fn main() {
@@ -23,7 +53,6 @@ fn main() {
 }
 ```
 
-
 ## Wildcard patterns
 
 The supported patterns are as follows in the table below.
@@ -42,10 +71,11 @@ The supported patterns are as follows in the table below.
 
 In \[`str`\], you can specify character codes using \xHH or \uHHHH.
 
-# (ja) 日本語の解説
+### (ja) 拡張ワイルドカード
 
-これは、VBライクな指定が可能な拡張ワイルドカードのライブラリです。
+このクレートは、VBライクな指定が可能な拡張ワイルドカードのライブラリです。
 簡単な指定でワイルドカードの任意文字列の繰り返し表現が可能です。
+日本語などのマルチバイト文字列も問題なく処理できます。
 
 指定可能なのは次のようなワイルドカードのパターンです。
 
@@ -63,3 +93,33 @@ In \[`str`\], you can specify character codes using \xHH or \uHHHH.
 
 \[`str`\]では、`\xHH`あるいは`\uHHHH`を指定して文字コードを指定できます。
 
+### 簡単な使い方
+
+- `is_match_simple`は一般的なワイルドカードを指定するものです。
+- `is_match`は拡張ワイルドカードを指定するものです。
+
+```rust
+use wildcard_ex::{is_match_simple, is_match};
+fn main() {
+    // simple pattern matching with wildcard characters ['*', '?', '#']
+    assert_eq!(is_match_simple("*.txt", "abc.txt"), true);
+    assert_eq!(is_match_simple("a???.txt", "abcd.txt"), true);
+    assert_eq!(is_match_simple("zip:###-####", "zip:111-2222"), true); // '#' is number
+    // wildcard "[...]"
+    assert_eq!(is_match("[a-z]1234.txt", "a1234.txt"), true);
+    assert_eq!(is_match("[a-z][0-9].txt", "b5.txt"), true);
+    // not pattern
+    assert_eq!(is_match("[!0-9][0-9].txt", "c9.txt"), true);
+    // repeating pattern
+    assert_eq!(is_match("[+0-9].txt", "12345.txt"), true);
+    assert_eq!(is_match("[+a-z0-9].txt", "abc12345.txt"), true);
+    // selector
+    assert_eq!(is_match("[=cat|dog].txt", "cat.txt"), true);
+}
+```
+
+### link
+
+- [repository](https://github.com/kujirahand/wildcard_ex-rust)
+- [crates.io](https://crates.io/crates/wildcard_ex)
+- [document](https://docs.rs/wildcard_ex/)
