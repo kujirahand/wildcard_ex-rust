@@ -421,9 +421,14 @@ mod tests {
     }
     #[test]
     fn test_is_match_multibytes() {
+        assert_eq!(is_match("魚[あ-ん]ち.zip", "魚いち.zip"), true);
+        assert_eq!(is_match("日本[!あ-ん].zip", "日本酒.zip"), true);
+        assert_eq!(is_match("[魚牛豚]肉.zip", "魚肉.zip"), true);
+        // repated pattern
         assert_eq!(is_match("[+あ-ん].zip", "いろは.zip"), true);
         assert_eq!(is_match("[+あ-ん].zip", "魚エラー.zip"), false);
         assert_eq!(is_match("魚[+ア-ン].zip", "魚図鑑.zip"), false);
+        assert_eq!(is_match("[+いろはにほへと]うた.zip", "いろはうた.zip"), true);
         // selector
         assert_eq!(is_match("[=図鑑|資料|市場].zip", "市場.zip"), true);
         assert_eq!(is_match("魚[=図鑑|資料|市場]売店.zip", "魚市場売店.zip"), true);
