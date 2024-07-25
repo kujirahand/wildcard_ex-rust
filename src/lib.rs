@@ -22,6 +22,9 @@
 //! }
 //! ```
 //! 
+//! Please refer to the following README to see which wildcard patterns can be used.
+//! - [README.md](https://github.com/kujirahand/wildcard_ex-rust)
+//! 
 //! ## Using ex:Pattern objects
 //! 
 //! ```rust
